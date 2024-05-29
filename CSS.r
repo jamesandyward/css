@@ -12,21 +12,21 @@ library(MINOTAUR)
 # This will generate a file with Fst values for each SNP
 
 #Read in the Fst data and format
-data_fst <- fread("Fst/BON_EUT_Fst/BON_EUT_Fst_ind_SNP.weir.fst")
+data_fst <- fread("FST.weir.fst")
 colnames(data_fst) <- c("chromosome", "position", "fst")
 data_fst <- data_fst[order(data_fst$chromosome, data_fst$position),] # Order data by chromosome and position
 data_fst$SNPid <- paste0(data_fst$chromosome,":",data_fst$position) # Append a SNPid (chromosome:position) to the dataframe
 
 # Write the dataframe to a file in the event of a crash so data can be reloaded quickly
-write.table(data_fst, "CSS_results/BON/BON_Fst.txt", sep = "\t", row.names = FALSE)
-data_fst <- fread("CSS_results/BON/BON_Fst.txt", sep = "\t")
+write.table(data_fst, "CSS_results/Fst.txt", sep = "\t", row.names = FALSE)
+data_fst <- fread("CSS_results/Fst.txt", sep = "\t")
 
 # ∆SAF
 # ∆SAF values can be calculated using the VCFtools --freq option and some manipulation in R
 # Read in freq data generated using VCFtools --freq option
 # Generate the files for the selected population and the non-selected population
-selected_frq <- fread("delta_SAF/BON_SAF.frq", header = FALSE, skip = 1)
-non_selected_frq <- fread("delta_SAF/EUT_SAF.frq", header = FALSE, skip = 1)
+selected_frq <- fread("SAF.frq", header = FALSE, skip = 1)
+non_selected_frq <- fread("SAF.frq", header = FALSE, skip = 1)
 
 # Set column names
 colnames(selected_frq) <- c("CHROM", "POS", "N_ALLELES", "N_CHR", "Allele_Freq1", "Allele_Freq2")
@@ -71,8 +71,8 @@ colnames(data_saf) <- c("chromosome", "position", "deltaSAFz")
 data_saf$SNPid <- paste0(data_saf$chromosome,":",data_saf$position)
 
 # Write the dateframe to a file in the event of a crash so data can be reloaded quickly
-write.table(data_saf, "CSS_results/BON/BON_SAF.txt", sep = "\t", row.names = FALSE)
-data_saf <- fread("CSS_results/BON/BON_SAF.txt", sep = "\t")
+write.table(data_saf, "CSS_results/SAF.txt", sep = "\t", row.names = FALSE)
+data_saf <- fread("CSS_results/SAF.txt", sep = "\t")
 
 # Remove unneccessary dataframes from the environment
 rm(selected_frq, non_selected_frq)
@@ -85,7 +85,7 @@ rm(selected_frq, non_selected_frq)
 # awk 'FNR==1 && NR!=1{next;}{print}' *_selscan_test-ref.xpehh.out | sort -k 1n > all_selscan_test-ref.xpehh.out
 
 # Read in the XPEHH data and format
-data_xpehh<-fread("XPEHH/selscan_output/BON_EUT_XPEHH/all_selscan_BON-EUT.win50.xpehh.out.norm")
+data_xpehh<-fread("selscan.win50.xpehh.out")
 colnames(data_xpehh)[1] <- "chrpos"
 data_xpehh<- separate(data_xpehh, chrpos, into = c("chromosome", "position"), sep = "-")
 data_xpehh$chromosome <- as.numeric(data_xpehh$chromosome)
@@ -96,8 +96,8 @@ data_xpehh <- data_xpehh[,c(1,2,12,13)]
 colnames(data_xpehh) <- c("chromosome", "position", "XPEHHz", "SNPid")
 
 # Write the dateframe to a file in the event of a crash so data can be reloaded quickly
-write.table(data_xpehh, "CSS_results/BON/BON_XPEHH.txt", sep = "\t", row.names = FALSE)
-data_xpehh <- fread("CSS_results/BON/BON_XPEHH.txt", sep = "\t")
+write.table(data_xpehh, "CSS_results/XPEHH.txt", sep = "\t", row.names = FALSE)
+data_xpehh <- fread("CSS_results/XPEHH.txt", sep = "\t")
 
 # Merge data frames by SNPid, select chromosome, position, SNPid and selection stat columns
 merged_df <- data_fst %>%
@@ -128,6 +128,8 @@ hist(df$css, breaks=25, xlab="CSS value", main="Histogram of CSS statistic")
 df <- df[,c(1,2,3,7)]
 write.table(df, "CSS_results/CSS.txt", sep = "\t", row.names = FALSE)
 
+# Run python smoothing script on the CSS.txt
+
 # Smooth CSS statistics using the sliding_window.py script and merge the resulting output using the merge_csv.py script
 smoothed_results <- fread("CSS_results/CSS_windows.csv", header = T)
 
@@ -146,8 +148,8 @@ top_1_percent <- smoothed_results[smoothed_results$mean_css >= threshold_1_perce
 
 # Define the function to check for at least five flanking SNPs from the top 1%
 has_five_flanking_snps <- function(snp, top_1_percent) {
-  start_pos <- snp$position - 1000000  # 1000kb window
-  end_pos <- snp$position + 1000000 # 1000kb window
+  start_pos <- snp$position - 100000  # 100kb window
+  end_pos <- snp$position + 100000 # 100kb window
   flanking_snps <- top_1_percent[top_1_percent$chromosome == snp$chromosome & 
                                    top_1_percent$position >= start_pos & 
                                    top_1_percent$position <= end_pos, ]
